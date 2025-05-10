@@ -1,0 +1,19 @@
+
+body {
+  font-family: sans-serif;
+  text-align: center;
+  background: #2d2d2d;
+  color: white;
+}
+#game {
+  margin-top: 50px;
+}
+button {
+  margin: 10px;
+  padding: 10px 20px;
+  font-size: 16px;
+}
+#player, #dealer {
+  margin: 20px;
+  font-size: 24px;
+}
