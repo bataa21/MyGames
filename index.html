@@ -1,22 +1,643 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="mn">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mini 21 Game</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>Muushig - With Scoring</title>
+  <style>
+    body { 
+      background: #006400; 
+      margin: 0; 
+      overflow: hidden; 
+      font-family: sans-serif; 
+      color: white; 
+    }
+    #welcome-screen { 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      right: 0; 
+      bottom: 0; 
+      background: #004000; 
+      color: white; 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: center; 
+      align-items: center; 
+      z-index: 1000; 
+    }
+    #dealer-hand, #player-hand { 
+      position: absolute; 
+      left: 50%; 
+      transform: translateX(-50%); 
+      display: flex; 
+      gap: 5px; 
+    }
+    #dealer-hand { top: 40px; }
+    #player-hand { bottom: 80px; }
+    .card-image { 
+      width: 80px; 
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3); 
+      cursor: pointer; 
+      transition: all 0.2s;
+    }
+    .selected { 
+      border: 2px solid gold; 
+      transform: translateY(-10px); 
+    }
+    #deck-area { 
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%); 
+      width: 100px; 
+      height: 140px; 
+      transition: transform 0.8s ease; 
+    }
+    #deck-area.outside { transform: translate(-400px, -250px); }
+    .deck-layer { position: absolute; width: 80px; }
+    #deck-layer1 { top: 6px; left: 6px; z-index: 1; }
+    #deck-layer2 { top: 3px; left: 3px; z-index: 2; }
+    #deck-layer3 { top: 0; left: 0; z-index: 3; }
+    #deck-top   { top: 0; left: 0; z-index: 4; }
+    #trump-img { 
+      position: absolute; 
+      top: 70px; 
+      left: 0; 
+      width: 80px; 
+      z-index: 0; 
+      transition: opacity 0.3s ease; 
+      opacity: 0; 
+    }
+    #deck-count { 
+      position: absolute; 
+      top: 120px; 
+      left: 50%; 
+      transform: translateX(-50%); 
+      font-weight: bold; 
+      font-size: 18px; 
+      text-shadow: 1px 1px 2px #000; 
+    }
+    #trump-suit { 
+      position: absolute; 
+      top: calc(50% + 100px); 
+      left: 50%; 
+      transform: translateX(-50%); 
+      font-size: 24px; 
+      font-weight: bold; 
+      background: rgba(0,0,0,0.6); 
+      padding: 5px 10px; 
+      border-radius: 8px; 
+      display: none; 
+    }
+    #status { 
+      position: absolute; 
+      left: 50%; 
+      top: 10px; 
+      transform: translateX(-50%); 
+      background: rgba(0,0,0,0.6); 
+      padding: 10px 20px; 
+      border-radius: 8px; 
+      white-space: nowrap;
+    }
+    #score-display {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      background: rgba(0,0,0,0.6);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 18px;
+    }
+    #table-area { 
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%); 
+      display: flex; 
+      gap: 40px; 
+      align-items: center; 
+    }
+    #table-area img { width: 80px; }
+    #swap-button, #pickup-trump-button, #play-button { 
+      position: absolute; 
+      left: 50%; 
+      transform: translateX(-50%); 
+      padding: 10px 20px; 
+      font-size: 16px; 
+      cursor: pointer;
+      background: #2a5c2a;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    #swap-button { bottom: 50px; }
+    #pickup-trump-button { bottom: 10px; }
+    #play-button { bottom: 50px; display: none; }
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+    #game-over {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      color: white;
+      font-size: 24px;
+    }
+  </style>
 </head>
 <body>
-  <h1>🃏 Мангасын 21</h1>
-  <div id="game">
-    <p id="status">Click Deal to Start!</p>
-    <button onclick="deal()">🎴 Deal</button>
-    <button onclick="hit()">➕ Hit</button>
-    <button onclick="stand()">✋ Stand</button>
-    <div id="player"></div>
-    <div id="dealer"></div>
-  </div>
-  <script src="script.js"></script>
+
+<div id="welcome-screen">
+  <h1>Welcome to Muushig</h1>
+  <p>A classic Mongolian trick-taking duel.<br/>Play smart and win!</p>
+  <button id="start-btn">Start Game</button>
+</div>
+
+<div id="status">Click Start to begin</div>
+<div id="score-display">Player: 15 | Dealer: 15</div>
+<div id="dealer-hand"></div>
+<div id="player-hand"></div>
+
+<div id="deck-area">
+  <img id="deck-layer1" class="deck-layer" src="cards/back.png">
+  <img id="deck-layer2" class="deck-layer" src="cards/back.png">
+  <img id="deck-layer3" class="deck-layer" src="cards/back.png">
+  <img id="deck-top" src="cards/back.png">
+  <img id="trump-img" src="cards/trump-peek.png">
+  <div id="deck-count">32</div>
+</div>
+
+<div id="trump-suit"></div>
+<div id="table-area"></div>
+
+<button id="swap-button" style="display:none">Swap Selected Cards</button>
+<button id="pickup-trump-button" style="display:none">Pickup Trump Card</button>
+<button id="play-button" disabled>Play Selected Card</button>
+
+<div id="game-over">
+  <h2 id="game-result">Game Over</h2>
+  <p id="final-score">Final Scores</p>
+  <button id="play-again-btn">Play Again</button>
+</div>
+
+<script>
+const suits = ['♠️','♥️','♦️','♣️'];
+const ranks = ['7','8','9','10','J','Q','K','A'];
+let deck = [], playerHand = [], dealerHand = [], huzurCard = null;
+let selectedIndexes = [], leader = "player", trickCount = 0, selectedCardIndex = -1;
+let playerScore = 15, dealerScore = 15;
+let playerTricks = 0, dealerTricks = 0;
+const status = document.getElementById('status');
+
+// Utility functions
+function suitSymbol(s) { return {'♠️':'S','♥️':'H','♦️':'D','♣️':'C'}[s]; }
+
+function createDeck() {
+  const d = [];
+  suits.forEach(s => ranks.forEach(r => d.push({suit: s, suitSymbol: suitSymbol(s), rank: r})));
+  return d;
+}
+
+function shuffleDeck() {
+  deck = createDeck();
+  for(let i = deck.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  updateDeckCount();
+}
+
+function updateDeckCount() {
+  document.getElementById('deck-count').textContent = deck.length;
+}
+
+function updateScores() {
+  document.getElementById('score-display').textContent = `Player: ${playerScore} | Dealer: ${dealerScore}`;
+}
+
+function checkGameEnd() {
+  if (playerScore <= 0) {
+    endGame("Dealer wins! You reached 0 points.");
+    return true;
+  } else if (dealerScore <= 0) {
+    endGame("You win! Dealer reached 0 points.");
+    return true;
+  }
+  return false;
+}
+
+function endGame(message) {
+  document.getElementById('game-result').textContent = message;
+  document.getElementById('final-score').textContent = `Final Scores - Player: ${playerScore} | Dealer: ${dealerScore}`;
+  document.getElementById('game-over').style.display = 'flex';
+}
+
+// Game flow functions
+async function dealCards() {
+  playerHand = []; 
+  dealerHand = []; 
+  selectedIndexes = []; 
+  trickCount = 0; 
+  leader = "player";
+  selectedCardIndex = -1;
+  playerTricks = 0;
+  dealerTricks = 0;
+  
+  const trumpImg = document.getElementById('trump-img');
+  trumpImg.style.opacity = 0;
+  document.getElementById('trump-suit').style.display = 'none';
+  
+  const pDiv = document.getElementById('player-hand');
+  const dDiv = document.getElementById('dealer-hand');
+  pDiv.innerHTML = ''; 
+  dDiv.innerHTML = ''; 
+  document.getElementById('deck-area').classList.remove('outside');
+  
+  for(let i = 0; i < 10; i++) {
+    const c = deck.pop();
+    (i % 2 === 0 ? playerHand : dealerHand).push(c);
+    updateDeckCount();
+  }
+  
+  huzurCard = deck.pop();
+  trumpImg.src = `cards/${huzurCard.rank}${huzurCard.suitSymbol}.png`;
+  trumpImg.style.opacity = 1;
+  updateDeckCount();
+  
+  showSwapPhase();
+}
+
+function renderPlayerHand() {
+  const pDiv = document.getElementById('player-hand');
+  pDiv.innerHTML = '';
+  
+  playerHand.forEach((c, i) => {
+    const img = document.createElement('img');
+    img.src = `cards/${c.rank}${c.suitSymbol}.png`;
+    img.className = 'card-image';
+    if (selectedIndexes.includes(i)) img.classList.add('selected');
+    img.onclick = () => handleCardClick(i);
+    pDiv.appendChild(img);
+  });
+}
+
+function renderDealerHand() {
+  const dDiv = document.getElementById('dealer-hand');
+  dDiv.innerHTML = '';
+  dealerHand.forEach(c => {
+    const img = document.createElement('img');
+    img.src = `cards/${c.rank}${c.suitSymbol}.png`;
+    img.className = 'card-image';
+    dDiv.appendChild(img);
+  });
+}
+
+function handleCardClick(i) {
+  if (document.getElementById('swap-button').style.display !== 'none') {
+    // Swap phase
+    toggleSelect(i);
+  } else if (document.getElementById('pickup-trump-button').style.display !== 'none') {
+    // Trump pickup phase
+    selectedIndexes = [i]; // Reset selection to just this card
+    renderPlayerHand();
+  } else if (leader === "player") {
+    // Play phase
+    selectedCardIndex = i;
+    document.querySelectorAll('#player-hand .card-image').forEach(card => {
+      card.classList.remove('selected');
+    });
+    document.querySelectorAll('#player-hand .card-image')[i].classList.add('selected');
+    document.getElementById('play-button').disabled = false;
+  }
+}
+
+function toggleSelect(i) {
+  // Only allow selection during swap phase
+  if (document.getElementById('swap-button').style.display !== 'none') {
+    const idx = selectedIndexes.indexOf(i);
+    if (idx >= 0) {
+      selectedIndexes.splice(idx, 1);
+    } else if (selectedIndexes.length < 5) {
+      selectedIndexes.push(i);
+    }
+    renderPlayerHand();
+  }
+}
+
+function showSwapPhase() {
+  renderPlayerHand();
+  renderDealerHand();
+  status.textContent = "Select 1–5 cards to swap";
+  document.getElementById('swap-button').style.display = 'block';
+  document.getElementById('pickup-trump-button').style.display = 'none';
+  document.getElementById('play-button').style.display = 'none';
+}
+
+function swapCards() {
+  if (selectedIndexes.length === 0) {
+    alert("Select 1–5 cards!");
+    return;
+  }
+  
+  selectedIndexes.sort((a, b) => b - a);
+  selectedIndexes.forEach(i => {
+    if (deck.length > 0) {
+      playerHand[i] = deck.pop();
+    }
+  });
+  
+  selectedIndexes = [];
+  renderPlayerHand();
+  updateDeckCount();
+  document.getElementById('swap-button').style.display = 'none';
+  status.textContent = "Select exactly 1 card to replace with the trump card";
+  document.getElementById('pickup-trump-button').style.display = 'block';
+}
+
+function pickupTrump() {
+  if (selectedIndexes.length !== 1) {
+    alert("Select 1 card!");
+    return;
+  }
+  
+  const idx = selectedIndexes[0];
+  playerHand[idx] = huzurCard;
+  selectedIndexes = [];
+  renderPlayerHand();
+  
+  document.getElementById('pickup-trump-button').style.display = 'none';
+  document.getElementById('trump-img').style.opacity = 0;
+  document.getElementById('deck-area').classList.add('outside');
+  document.getElementById('trump-suit').textContent = `Trump: ${huzurCard.suit}`;
+  document.getElementById('trump-suit').style.display = 'block';
+  
+  // Show play button and start play phase
+  document.getElementById('play-button').style.display = 'block';
+  document.getElementById('play-button').disabled = true;
+  status.textContent = "Your turn: Select a card to play";
+}
+
+function playSelectedCard() {
+  if (selectedCardIndex === -1 || leader !== "player") {
+    alert("Please select a card to play!");
+    return;
+  }
+  
+  playCard(selectedCardIndex);
+  selectedCardIndex = -1;
+  document.getElementById('play-button').disabled = true;
+}
+
+async function playCard(i) {
+  if (leader !== "player") {
+    status.textContent = "Wait for bot!";
+    return;
+  }
+  
+  const p = playerHand.splice(i, 1)[0];
+  renderPlayerHand();
+  
+  const trump = huzurCard.suit;
+  const lead = p.suit;
+  
+  // Find bot's response
+  let follow = dealerHand.filter(c => c.suit === lead);
+  let tr = dealerHand.filter(c => c.suit === trump);
+  let low = dealerHand.slice().sort((a, b) => ranks.indexOf(a.rank) - ranks.indexOf(b.rank));
+  
+  let b;
+  if (follow.length) {
+    b = follow[0];
+  } else if (tr.length) {
+    b = tr[0];
+  } else {
+    b = low[0];
+  }
+  
+  dealerHand.splice(dealerHand.indexOf(b), 1);
+  renderDealerHand();
+  
+  // Show cards on table
+  const table = document.getElementById('table-area');
+  table.innerHTML = '';
+  
+  const pi = document.createElement('img');
+  pi.src = `cards/${p.rank}${p.suitSymbol}.png`;
+  
+  const bi = document.createElement('img');
+  bi.src = `cards/${b.rank}${b.suitSymbol}.png`;
+  
+  table.append(pi, bi);
+
+  // Determine winner
+  let pValue = ranks.indexOf(p.rank);
+  let bValue = ranks.indexOf(b.rank);
+  let winner;
+  
+  if (p.suit === b.suit) {
+    winner = pValue > bValue ? "player" : "dealer";
+  } else {
+    if (b.suit === trump) {
+      winner = "dealer";
+    } else if (p.suit === trump) {
+      winner = "player";
+    } else {
+      winner = "player"; // Leader wins if non-trump
+    }
+  }
+  
+  // Update scores and trick counts
+  if (winner === "player") {
+    playerScore -= 1;
+    playerTricks += 1;
+  } else {
+    dealerScore -= 1;
+    dealerTricks += 1;
+  }
+  
+  updateScores();
+  
+  leader = winner;
+  trickCount++;
+  
+  status.textContent = `Trick ${trickCount}: You ${p.rank}${p.suitSymbol} vs Dealer ${b.rank}${b.suitSymbol} | Winner: ${winner}`;
+  
+  await new Promise(r => setTimeout(r, 1500));
+  table.innerHTML = '';
+  
+  if (trickCount >= 5) {
+    // Check for sweep condition
+    if (playerTricks === 5) {
+      dealerScore += 5;
+      status.textContent = "You swept all tricks! Dealer gets +5 points";
+    } else if (dealerTricks === 5) {
+      playerScore += 5;
+      status.textContent = "Dealer swept all tricks! You get +5 points";
+    } else {
+      status.textContent = "Round finished!";
+    }
+    
+    updateScores();
+    document.getElementById('play-button').style.display = 'none';
+    
+    if (checkGameEnd()) {
+      return;
+    }
+    
+    // Start new round
+    setTimeout(() => {
+      shuffleDeck();
+      dealCards();
+    }, 2000);
+    return;
+  }
+  
+  if (leader === "dealer") {
+    botLead();
+  } else {
+    status.textContent = "Your turn: Select a card to play";
+  }
+}
+
+function botLead() {
+  if (dealerHand.length === 0) return;
+  
+  const lead = dealerHand[0];
+  dealerHand.splice(0, 1);
+  renderDealerHand();
+  
+  const trump = huzurCard.suit;
+  
+  // Find player's response
+  let follow = playerHand.filter(c => c.suit === lead.suit);
+  let tr = playerHand.filter(c => c.suit === trump);
+  let low = playerHand.slice().sort((a, b) => ranks.indexOf(a.rank) - ranks.indexOf(b.rank));
+  
+  let p;
+  if (follow.length) {
+    p = follow[0];
+  } else if (tr.length) {
+    p = tr[0];
+  } else {
+    p = low[0];
+  }
+  
+  playerHand.splice(playerHand.indexOf(p), 1);
+  renderPlayerHand();
+  
+  // Show cards on table
+  const table = document.getElementById('table-area');
+  table.innerHTML = '';
+  
+  const pi = document.createElement('img');
+  pi.src = `cards/${p.rank}${p.suitSymbol}.png`;
+  
+  const bi = document.createElement('img');
+  bi.src = `cards/${lead.rank}${lead.suitSymbol}.png`;
+  
+  table.append(pi, bi);
+  
+  // Determine winner
+  let pValue = ranks.indexOf(p.rank);
+  let bValue = ranks.indexOf(lead.rank);
+  let winner;
+  
+  if (p.suit === lead.suit) {
+    winner = pValue > bValue ? "player" : "dealer";
+  } else {
+    if (lead.suit === trump) {
+      winner = "dealer";
+    } else if (p.suit === trump) {
+      winner = "player";
+    } else {
+      winner = "dealer"; // Leader wins if non-trump
+    }
+  }
+  
+  // Update scores and trick counts
+  if (winner === "player") {
+    playerScore -= 1;
+    playerTricks += 1;
+  } else {
+    dealerScore -= 1;
+    dealerTricks += 1;
+  }
+  
+  updateScores();
+  
+  leader = winner;
+  trickCount++;
+  
+  status.textContent = `Trick ${trickCount}: Dealer ${lead.rank}${lead.suitSymbol} vs You ${p.rank}${p.suitSymbol} | Winner: ${winner}`;
+  
+  setTimeout(() => {
+    table.innerHTML = '';
+    if (trickCount >= 5) {
+      // Check for sweep condition
+      if (playerTricks === 5) {
+        dealerScore += 5;
+        status.textContent = "You swept all tricks! Dealer gets +5 points";
+      } else if (dealerTricks === 5) {
+        playerScore += 5;
+        status.textContent = "Dealer swept all tricks! You get +5 points";
+      } else {
+        status.textContent = "Round finished!";
+      }
+      
+      updateScores();
+      document.getElementById('play-button').style.display = 'none';
+      
+      if (checkGameEnd()) {
+        return;
+      }
+      
+      // Start new round
+      setTimeout(() => {
+        shuffleDeck();
+        dealCards();
+      }, 2000);
+      return;
+    }
+    if (leader === "dealer") {
+      botLead();
+    } else {
+      status.textContent = "Your turn: Select a card to play";
+    }
+  }, 1500);
+}
+
+function startGame() {
+  playerScore = 15;
+  dealerScore = 15;
+  updateScores();
+  shuffleDeck();
+  status.textContent = "You are Dealer";
+  dealCards();
+}
+
+// Event listeners
+document.getElementById('start-btn').onclick = () => {
+  document.getElementById('welcome-screen').style.display = 'none';
+  startGame();
+};
+
+document.getElementById('play-again-btn').onclick = () => {
+  document.getElementById('game-over').style.display = 'none';
+  startGame();
+};
+
+document.getElementById('swap-button').onclick = swapCards;
+document.getElementById('pickup-trump-button').onclick = pickupTrump;
+document.getElementById('play-button').onclick = playSelectedCard;
+</script>
 </body>
 </html>
